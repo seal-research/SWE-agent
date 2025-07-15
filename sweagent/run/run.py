@@ -87,12 +87,23 @@ def main(args: list[str] | None = None):
         sys.exit(2)
     # Defer imports to avoid unnecessary long loading times
     if command in ["run", "r"]:
-        from sweagent.run.run_single import run_from_cli as run_single_main
 
-        run_single_main(remaining_args)
+        use_apptainer_arg = remaining_args.pop()
+        use_apptainer = True if "true" in use_apptainer_arg else False
+
+        if use_apptainer:
+            from sweagent.run.run_single_apptainer import run_from_cli as run_single_main
+            run_single_main(remaining_args)
+        else:
+            from sweagent.run.run_single import run_from_cli as run_single_main
+            run_single_main(remaining_args)
+
+        # from sweagent.run.run_single import run_from_cli as run_single_main
+        # run_single_main(remaining_args)
+
     elif command in ["run-batch", "b"]:
         from sweagent.run.run_batch import run_from_cli as run_batch_main
-
+        
         run_batch_main(remaining_args)
     elif command == "run-replay":
         from sweagent.run.run_replay import run_from_cli as run_replay_main
