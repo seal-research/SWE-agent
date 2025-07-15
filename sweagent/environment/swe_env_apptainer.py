@@ -114,7 +114,6 @@ class SWEEnv_Apptainer:
         """Start the environment and reset it to a clean state."""
         self._init_deployment()
         self.reset()
-        print("Post startup commands:", self._post_startup_commands)
         for command in self._post_startup_commands:
             self.communicate(command, check="raise", timeout=self.post_startup_command_timeout)
 
@@ -146,18 +145,10 @@ class SWEEnv_Apptainer:
             observation: output from container
             info: additional information (e.g. debugging information)
         """
-        # self.communicate(input="cd /", check="raise")
-        r = self.communicate(input='pwd', check="raise")
-        print(f"orginal pwd: {r.strip()}")
         self._copy_repo()
-        # r = self.communicate(input='pwd', check="raise")
-        # print(f"after copy repo pwd: {r.strip()}")
         self._reset_repository()
-        # r = self.communicate(input='pwd', check="raise")
-        # print(f"after reset repo pwd: {r.strip()}")
         self.communicate(input='cd ..', check="raise")
         r = self.communicate(input='pwd', check="raise")
-        print(f"after changing pwd: {r.strip()}")
         self.cwd = r.strip()
         self._chook.on_environment_startup()
 
@@ -172,7 +163,6 @@ class SWEEnv_Apptainer:
                 "export ROOT=$(pwd -P)",
                 *self.repo.get_reset_commands(),
             ]
-            print("startup_commands:", " && ".join(startup_commands))
             self.communicate(
                 input=" && ".join(startup_commands),
                 check="raise",
@@ -204,23 +194,12 @@ class SWEEnv_Apptainer:
         """
         self._chook.on_start_deployment()
         asyncio.run(self.deployment.start())
-        # asyncio.run(
-        #     self.deployment.runtime.create_session(
-        #         CreateBashSessionRequest(startup_source=["/root/.bashrc"], startup_timeout=10, sandbox_path=self.deployment.sandbox_path)
-        #     )
-        # )
-        # self.set_env_variables({"LANG": "C.UTF-8", "LC_ALL": "C.UTF-8"})
-        # self.logger.info("Environment Initialized")
-
-        self.logger.info("Creating persistent shell session inside Apptainer...")
         
         # Get the sandbox path from the deployment object
         sandbox_path = self.deployment.sandbox_path
         if not sandbox_path:
             raise RuntimeError("Sandbox path not found in deployment. Has deployment.start() been called?")
 
-        # Create a request for a session named "default"
-        # This session will be reused for all subsequent `communicate` calls
         session_request = CreateBashSessionRequest(
             session="default",
             sandbox_path=sandbox_path
