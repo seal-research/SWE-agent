@@ -107,14 +107,15 @@ class LocalRepoConfig(BaseModel):
         self.check_valid_repo()
         if deployment._config.type == "apptainer":
             asyncio.run(
-                deployment.runtime.upload(UploadRequest(source_path=str(self.path), target_path=f"{self.repo_name}"))
+                deployment.runtime.upload(UploadRequest(source_path=str(self.path), target_path=f"{deployment.sandbox_path}/{self.repo_name}"))
             )
             r = asyncio.run(deployment.runtime.execute(Command(command=f"chown -R root:root {self.repo_name}", shell=True)))
         else:
             asyncio.run(
-                deployment.runtime.upload(UploadRequest(source_path=str(self.path), target_path=f"dev/apptainer_sandbox/{self.repo_name}"))
+                deployment.runtime.upload(UploadRequest(source_path=str(self.path), target_path=f"/{self.repo_name}"))
             )
-            r = asyncio.run(deployment.runtime.execute(Command(command=f"chown -R root:root dev/apptainer_sandbox/{self.repo_name}", shell=True)))
+            r = asyncio.run(deployment.runtime.execute(Command(command=f"chown -R root:root {self.repo_name}", shell=True)))
+            
         
         if r.exit_code != 0:
             msg = f"Failed to change permissions on copied repository (exit code: {r.exit_code}, stdout: {r.stdout}, stderr: {r.stderr})"
