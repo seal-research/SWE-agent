@@ -34,7 +34,9 @@ class EnvironmentConfig_Apptainer(BaseModel):
         default=None,
         description="Repository options.",
     )
-    post_startup_commands: list[str] = []
+    post_startup_commands: list[str] = [
+        "source /opt/miniconda3/bin/activate && conda activate testbed"
+    ]
     """Execute these commands before starting to run the agent but after all other setup steps.
     They will be executed in the same shell as the agent.
     Note: Every command is passed as a string, not a list of arguments.
@@ -147,9 +149,12 @@ class SWEEnv_Apptainer:
         """
         self._copy_repo()
         self._reset_repository()
+        r = self.communicate(input='pwd', check="raise")
+        cwd = r.strip()
         self.communicate(input='cd ..', check="raise")
         r = self.communicate(input='pwd', check="raise")
         self.cwd = r.strip()
+        self.communicate(input=f'cd {cwd}', check="raise")
         self._chook.on_environment_startup()
 
     def _reset_repository(self) -> None:
@@ -251,7 +256,7 @@ class SWEEnv_Apptainer:
             if check == "raise":
                 self.close()
                 raise RuntimeError(msg)
-        return output
+        return output.split("(testbed)")[0]
 
     def read_file(self, path: str | PurePath, encoding: str | None = None, errors: str | None = None) -> str:
         """Read file contents from container
