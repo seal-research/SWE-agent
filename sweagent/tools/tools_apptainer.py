@@ -285,8 +285,6 @@ class ToolHandler:
             raise RuntimeError(msg) from None
 
     async def _check_available_commands(self, env: SWEEnv_Apptainer, env_vars: dict[str, str]) -> None:
-        for command in self.config.commands:
-            print("Checking availability of command:", command.name)
         await asyncio.gather(
             *(self._is_command_available(env, command.name, env_vars) for command in self.config.commands)
         )
@@ -294,7 +292,7 @@ class ToolHandler:
     def _install_commands(self, env: SWEEnv_Apptainer) -> None:
         """Make sure all commands are available in the container"""
         env.set_env_variables(self.config.env_variables)
-        print(f"Current working directory: {env.cwd}")
+        cwd = env.communicate("pwd", check="raise").strip()
         asyncio.run(self._upload_bundles(env))
         for bundle in self.config.bundles:
             cmds = [
@@ -304,15 +302,12 @@ class ToolHandler:
             if (bundle.path / "install.sh").exists():
                 cmds.append(f"cd {env.cwd}/root/tools/{bundle.path.name} && source install.sh")
             cmds.append(f"chmod +x {env.cwd}/root/tools/{bundle.path.name}/bin/*")
-            print(f"Installing bundle {bundle.path.name} with commands: {cmds}")
             env.communicate(
                 " && ".join(cmds),
                 check="raise",
                 timeout=self.config.install_timeout,
             )
-        r = env.communicate(f"echo $PATH", check="raise")
-        print("PATH after installing bundle:", r.strip())
-        env.communicate(f"cd {env.cwd}", check="raise")
+        env.communicate(f"cd {cwd}", check="raise")
         path = env.communicate("echo $PATH", check="raise").strip()
         asyncio.run(self._check_available_commands(env, {"PATH": path}))
 
