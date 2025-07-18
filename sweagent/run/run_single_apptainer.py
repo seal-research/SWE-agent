@@ -195,6 +195,9 @@ class RunSingle:
         self._chooks.on_instance_start(index=0, env=self.env, problem_statement=self.problem_statement)
         output_dir = self.output_dir / self.problem_statement.id
 
+        r = self.env.communicate("echo $CONDA_DEFAULT_ENV", check="raise")
+        print(f"Current conda environment: {r.strip()}")  # Debugging
+
         # output_dir.mkdir(parents=True, exist_ok=True)
         if self.agent.replay_config is not None:  # type: ignore[attr-defined]
             (output_dir / "config.yaml").write_text(yaml.dump(self.agent.replay_config.model_dump_json(), indent=4))  # type: ignore[attr-defined]

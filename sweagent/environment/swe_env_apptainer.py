@@ -85,7 +85,7 @@ class SWEEnv_Apptainer:
         for hook in hooks or []:
             self.add_hook(hook)
         
-        self.cwd = None
+        self.sandbox_path = None
 
     @classmethod
     def from_config(cls, config: EnvironmentConfig_Apptainer) -> Self:
@@ -153,7 +153,7 @@ class SWEEnv_Apptainer:
         cwd = r.strip()
         self.communicate(input='cd ..', check="raise")
         r = self.communicate(input='pwd', check="raise")
-        self.cwd = r.strip()
+        self.sandbox_path = r.strip()
         self.communicate(input=f'cd {cwd}', check="raise")
         self._chook.on_environment_startup()
 

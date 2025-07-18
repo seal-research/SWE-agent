@@ -849,10 +849,10 @@ class DefaultAgent(AbstractAgent):
                 self.logger.info("Diff from last traj step empty.")
             return step
         # Let us manually run the submission command and collect the output
-        repo_name = self._env.cwd
+        repo_name = self._env.sandbox_path
         if self._env.repo is not None:
-            repo_name = f"{self._env.cwd}/{self._env.repo.repo_name}"
-        submission_command = f"git add -A && git diff --cached > {self._env.cwd}/root/model.patch"
+            repo_name = f"{self._env.sandbox_path}/{self._env.repo.repo_name}"
+        submission_command = f"git add -A && git diff --cached > {self._env.sandbox_path}/root/model.patch"
         self.logger.info("Executing submission command %s in %s", submission_command, repo_name)
         try:
             self._env.execute_command(submission_command, check=True, cwd=repo_name)
@@ -914,7 +914,7 @@ class DefaultAgent(AbstractAgent):
                     PatchFormatter(
                         patch,
                         read_method=lambda path: self._env.read_file(  # type: ignore[attr-defined]
-                            PurePosixPath(self._env.cwd) / self._env.repo.repo_name / path  # type: ignore[attr-defined]
+                            PurePosixPath(self._env.sandbox_path) / self._env.repo.repo_name / path  # type: ignore[attr-defined]
                         ),
                     )
                     if patch
