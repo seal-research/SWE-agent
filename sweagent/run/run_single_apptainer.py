@@ -36,14 +36,14 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from sweagent.agent.agents import AbstractAgent, AgentConfig, get_agent_from_config
+from sweagent.agent.agents_apptainer import AbstractAgent, AgentConfig, get_agent_from_config
 from sweagent.agent.problem_statement import (
     EmptyProblemStatement,
     ProblemStatement,
     ProblemStatementConfig,
 )
 from sweagent.environment.swe_env import EnvironmentConfig, SWEEnv
-from sweagent.environment.swe_env_apptainer import EnvironmentConfig_Apptainer
+from sweagent.environment.swe_env_apptainer import EnvironmentConfig_Apptainer, SWEEnv_Apptainer
 from sweagent.run.common import AutoCorrectSuggestion as ACS
 from sweagent.run.common import BasicCLI, ConfigHelper, save_predictions
 from sweagent.run.hooks.abstract import CombinedRunHooks, RunHook
@@ -171,7 +171,7 @@ class RunSingle:
         agent = get_agent_from_config(config.agent)
         agent.replay_config = config  # type: ignore[attr-defined]
         self = cls(
-            env=SWEEnv.from_config(config.env),
+            env=SWEEnv_Apptainer.from_config(config.env_apptainer),
             agent=agent,
             problem_statement=config.problem_statement,
             output_dir=config.output_dir,
@@ -195,6 +195,9 @@ class RunSingle:
         self._chooks.on_instance_start(index=0, env=self.env, problem_statement=self.problem_statement)
         output_dir = self.output_dir / self.problem_statement.id
 
+        r = self.env.communicate("echo $CONDA_DEFAULT_ENV", check="raise")
+        print(f"Current conda environment: {r.strip()}")  # Debugging
+
         # output_dir.mkdir(parents=True, exist_ok=True)
         if self.agent.replay_config is not None:  # type: ignore[attr-defined]
             (output_dir / "config.yaml").write_text(yaml.dump(self.agent.replay_config.model_dump_json(), indent=4))  # type: ignore[attr-defined]
@@ -211,6 +214,9 @@ class RunSingle:
 
 
 def run_from_config(config: RunSingleConfig) -> None:
+    config.env_apptainer.repo = config.env.repo
+    config.env_apptainer.deployment.image = "docker://"+config.env.deployment.image
+    config.env_apptainer.deployment.apptainer_output_dir = config.output_dir / config.problem_statement.id
     RunSingle.from_config(config).run()
 
 

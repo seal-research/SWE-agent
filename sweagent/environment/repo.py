@@ -105,10 +105,18 @@ class LocalRepoConfig(BaseModel):
 
     def copy(self, deployment: AbstractDeployment):
         self.check_valid_repo()
-        asyncio.run(
-            deployment.runtime.upload(UploadRequest(source_path=str(self.path), target_path=f"/{self.repo_name}"))
-        )
-        r = asyncio.run(deployment.runtime.execute(Command(command=f"chown -R root:root {self.repo_name}", shell=True)))
+        if deployment._config.type == "apptainer":
+            asyncio.run(
+                deployment.runtime.upload(UploadRequest(source_path=str(self.path), target_path=f"{deployment.sandbox_path}/{self.repo_name}"))
+            )
+            r = asyncio.run(deployment.runtime.execute(Command(command=f"chown -R root:root {self.repo_name}", shell=True)))
+        else:
+            asyncio.run(
+                deployment.runtime.upload(UploadRequest(source_path=str(self.path), target_path=f"/{self.repo_name}"))
+            )
+            r = asyncio.run(deployment.runtime.execute(Command(command=f"chown -R root:root {self.repo_name}", shell=True)))
+            
+        
         if r.exit_code != 0:
             msg = f"Failed to change permissions on copied repository (exit code: {r.exit_code}, stdout: {r.stdout}, stderr: {r.stderr})"
             raise RuntimeError(msg)
@@ -160,26 +168,49 @@ class GithubRepoConfig(BaseModel):
         base_commit = self.base_commit
         github_token = os.getenv("GITHUB_TOKEN", "")
         url = self._get_url_with_token(github_token)
-        asyncio.run(
-            deployment.runtime.execute(
-                Command(
-                    command=" && ".join(
-                        (
-                            f"mkdir /{self.repo_name}",
-                            f"cd /{self.repo_name}",
-                            "git init",
-                            f"git remote add origin {url}",
-                            f"git fetch --depth 1 origin {base_commit}",
-                            "git checkout FETCH_HEAD",
-                            "cd ..",
-                        )
-                    ),
-                    timeout=self.clone_timeout,
-                    shell=True,
-                    check=True,
-                )
-            ),
-        )
+        if deployment._config.type == "apptainer":
+            asyncio.run(
+                deployment.runtime.execute(
+                    Command(
+                        command=" && ".join(
+                            (
+                                f"cd {deployment.sandbox_path}",
+                                f"mkdir {self.repo_name}",
+                                f"cd {self.repo_name}",
+                                "git init",
+                                f"git remote add origin {url}",
+                                f"git fetch --depth 1 origin {base_commit}",
+                                "git checkout FETCH_HEAD",
+                                "cd ..",
+                            )
+                        ),
+                        timeout=self.clone_timeout,
+                        shell=True,
+                        check=True,
+                    )
+                ),
+            )
+        else:
+            asyncio.run(
+                deployment.runtime.execute(
+                    Command(
+                        command=" && ".join(
+                            (
+                                f"mkdir /{self.repo_name}",
+                                f"cd /{self.repo_name}",
+                                "git init",
+                                f"git remote add origin {url}",
+                                f"git fetch --depth 1 origin {base_commit}",
+                                "git checkout FETCH_HEAD",
+                                "cd ..",
+                            )
+                        ),
+                        timeout=self.clone_timeout,
+                        shell=True,
+                        check=True,
+                    )
+                ),
+            )
 
     def get_reset_commands(self) -> list[str]:
         """Issued after the copy operation or when the environment is reset."""
