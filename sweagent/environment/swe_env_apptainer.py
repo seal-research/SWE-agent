@@ -35,7 +35,9 @@ class EnvironmentConfig_Apptainer(BaseModel):
         description="Repository options.",
     )
     post_startup_commands: list[str] = [
-        "source /opt/miniconda3/bin/activate && conda activate testbed"
+        # "source /opt/miniconda3/bin/activate && conda activate testbed", 
+        "[ -f /opt/miniconda3/bin/activate ] && source /opt/miniconda3/bin/activate", 
+        'conda env list | grep -q "^testbed" && conda activate testbed'
     ]
     """Execute these commands before starting to run the agent but after all other setup steps.
     They will be executed in the same shell as the agent.
