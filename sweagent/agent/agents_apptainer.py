@@ -299,6 +299,7 @@ class RetryAgent(AbstractAgent):
         self._env = env
         self._output_dir = output_dir
         self._rloop = get_retry_loop_from_config(self.config.retry_loop, problem_statement=problem_statement)
+        self.apptainer_output_dir=str(env.deployment._config.apptainer_output_dir.absolute())
 
     def _setup_agent(self) -> AbstractAgent:
         """Setup the agent for the current attempt."""
@@ -605,6 +606,8 @@ class DefaultAgent(AbstractAgent):
         self.add_instance_template_to_history(state=self.tools.get_state(self._env))
         self._chook.on_setup_done()
 
+        self.apptainer_output_dir=str(env.deployment._config.apptainer_output_dir.absolute())
+
     def add_system_message_to_history(self) -> None:
         """Add system message to history"""
         assert self._problem_statement is not None
@@ -849,10 +852,10 @@ class DefaultAgent(AbstractAgent):
                 self.logger.info("Diff from last traj step empty.")
             return step
         # Let us manually run the submission command and collect the output
-        repo_name = self._env.sandbox_path
+        repo_name = self.apptainer_output_dir+"/apptainer_sandbox"
         if self._env.repo is not None:
-            repo_name = f"{self._env.sandbox_path}/{self._env.repo.repo_name}"
-        submission_command = f"git add -A && git diff --cached > {self._env.sandbox_path}/root/model.patch"
+            repo_name = f"{self.apptainer_output_dir}/apptainer_sandbox/{self._env.repo.repo_name}"
+        submission_command = f"git add -A && git diff --cached > {self.apptainer_output_dir}/apptainer_sandbox/root/model.patch"
         self.logger.info("Executing submission command %s in %s", submission_command, repo_name)
         try:
             self._env.execute_command(submission_command, check=True, cwd=repo_name)
@@ -883,7 +886,7 @@ class DefaultAgent(AbstractAgent):
         if is_submission or force_submission:
             assert self._env is not None
             try:
-                submission = self._env.read_file(f"{self._env.deployment.sandbox_path}/root/model.patch", encoding="utf-8", errors="backslashreplace")
+                submission = self._env.read_file(f"{self.apptainer_output_dir}/apptainer_sandbox/root/model.patch", encoding="utf-8", errors="backslashreplace")
             except FileNotFoundError:
                 self.logger.warning("Submission file not found, no submission was made")
                 return step
@@ -914,7 +917,7 @@ class DefaultAgent(AbstractAgent):
                     PatchFormatter(
                         patch,
                         read_method=lambda path: self._env.read_file(  # type: ignore[attr-defined]
-                            PurePosixPath(self._env.sandbox_path) / self._env.repo.repo_name / path  # type: ignore[attr-defined]
+                            PurePosixPath(self.apptainer_output_dir) / "apptainer_sandbox" / self._env.repo.repo_name / path  # type: ignore[attr-defined]
                         ),
                     )
                     if patch

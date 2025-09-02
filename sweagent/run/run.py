@@ -88,12 +88,14 @@ def main(args: list[str] | None = None):
     # Defer imports to avoid unnecessary long loading times
     if command in ["run", "r"]:
 
+        g2_arg = remaining_args.pop()
         use_apptainer_arg = remaining_args.pop()
+        g2 = True if "true" in g2_arg else False
         use_apptainer = True if "true" in use_apptainer_arg else False
 
         if use_apptainer:
             from sweagent.run.run_single_apptainer import run_from_cli as run_single_main
-            run_single_main(remaining_args)
+            run_single_main(remaining_args, g2)
         else:
             from sweagent.run.run_single import run_from_cli as run_single_main
             run_single_main(remaining_args)
