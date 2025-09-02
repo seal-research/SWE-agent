@@ -213,14 +213,15 @@ class RunSingle:
         self.env.close()
 
 
-def run_from_config(config: RunSingleConfig) -> None:
+def run_from_config(config: RunSingleConfig, g2: bool) -> None:
     config.env_apptainer.repo = config.env.repo
     config.env_apptainer.deployment.image = "docker://"+config.env.deployment.image
     config.env_apptainer.deployment.apptainer_output_dir = config.output_dir / config.problem_statement.id
+    config.env_apptainer.deployment.g2 = g2
     RunSingle.from_config(config).run()
 
 
-def run_from_cli(args: list[str] | None = None):
+def run_from_cli(args: list[str] | None = None, g2: bool = False) -> None:
     if args is None:
         args = sys.argv[1:]
     assert __doc__ is not None
@@ -229,7 +230,7 @@ def run_from_cli(args: list[str] | None = None):
         __doc__ + "\n[cyan][bold]=== ALL THE OPTIONS ===[/bold][/cyan]\n\n" + ConfigHelper().get_help(RunSingleConfig)
     )
 
-    run_from_config(BasicCLI(RunSingleConfig, help_text=help_text).get_config(args))  # type: ignore
+    run_from_config(BasicCLI(RunSingleConfig, help_text=help_text).get_config(args), g2)  # type: ignore
 
 
 if __name__ == "__main__":

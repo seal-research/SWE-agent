@@ -259,15 +259,15 @@ class ToolHandler:
             var: os.getenv(var) for var in self.config.propagate_env_variables
         }
         env.set_env_variables(env_variables)
-        env.write_file(f"{env.sandbox_path}/root/.swe-agent-env", json.dumps(self.config.registry_variables))
-        env.write_file(f"{env.sandbox_path}/root/state.json", "{}")
+        env.write_file(f"{self.apptainer_output_dir}/apptainer_sandbox/root/.swe-agent-env", json.dumps(self.config.registry_variables))
+        env.write_file(f"{self.apptainer_output_dir}/apptainer_sandbox/root/state.json", "{}")
         env.communicate(" && ".join(self._reset_commands), check="raise", timeout=self.config.install_timeout)
 
     async def _upload_bundles(self, env: SWEEnv_Apptainer) -> None:
         await asyncio.gather(
             *(
                 env.deployment.runtime.upload(
-                    UploadRequest(source_path=bundle.path.as_posix(), target_path=f"{env.sandbox_path}/root/tools/{bundle.path.name}")
+                    UploadRequest(source_path=bundle.path.as_posix(), target_path=f"{self.apptainer_output_dir}/apptainer_sandbox/root/tools/{bundle.path.name}")
                 )
                 for bundle in self.config.bundles
             )
@@ -293,15 +293,16 @@ class ToolHandler:
         """Make sure all commands are available in the container"""
         env.set_env_variables(self.config.env_variables)
         cwd = env.communicate("pwd", check="raise").strip()
+        self.apptainer_output_dir=str(env.deployment._config.apptainer_output_dir.absolute())
         asyncio.run(self._upload_bundles(env))
         for bundle in self.config.bundles:
             cmds = [
-                f"export PATH={env.sandbox_path}/root/tools/{bundle.path.name}/bin:$PATH",
-                f"chmod +x {env.sandbox_path}/root/tools/{bundle.path.name}/bin/*",
+                f"export PATH={self.apptainer_output_dir}/apptainer_sandbox/root/tools/{bundle.path.name}/bin:$PATH",
+                f"chmod +x {self.apptainer_output_dir}/apptainer_sandbox/root/tools/{bundle.path.name}/bin/*",
             ]
             if (bundle.path / "install.sh").exists():
-                cmds.append(f"cd {env.sandbox_path}/root/tools/{bundle.path.name} && source install.sh")
-            cmds.append(f"chmod +x {env.sandbox_path}/root/tools/{bundle.path.name}/bin/*")
+                cmds.append(f"cd {self.apptainer_output_dir}/apptainer_sandbox/root/tools/{bundle.path.name} && source install.sh")
+            cmds.append(f"chmod +x {self.apptainer_output_dir}/apptainer_sandbox/root/tools/{bundle.path.name}/bin/*")
             env.communicate(
                 " && ".join(cmds),
                 check="raise",
@@ -317,7 +318,7 @@ class ToolHandler:
     def _get_state(self, env: SWEEnv_Apptainer) -> dict[str, str]:
         """Retrieve the state from the environment"""
         try:
-            state_str = env.read_file(f"{env.sandbox_path}/root/state.json")
+            state_str = env.read_file(f"{self.apptainer_output_dir}/apptainer_sandbox/root/state.json")
         except FileNotFoundError:
             self.logger.warning("State file not found, returning empty state")
             return {}

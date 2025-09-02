@@ -107,7 +107,7 @@ class LocalRepoConfig(BaseModel):
         self.check_valid_repo()
         if deployment._config.type == "apptainer":
             asyncio.run(
-                deployment.runtime.upload(UploadRequest(source_path=str(self.path), target_path=f"{deployment.sandbox_path}/{self.repo_name}"))
+                deployment.runtime.upload(UploadRequest(source_path=str(self.path), target_path=f"{str(deployment._config.apptainer_output_dir / "apptainer_sandbox")}/{self.repo_name}"))
             )
             r = asyncio.run(deployment.runtime.execute(Command(command=f"chown -R root:root {self.repo_name}", shell=True)))
         else:
@@ -174,7 +174,7 @@ class GithubRepoConfig(BaseModel):
                     Command(
                         command=" && ".join(
                             (
-                                f"cd {deployment.sandbox_path}",
+                                f"cd {str(deployment._config.apptainer_output_dir / "apptainer_sandbox")}",
                                 f"mkdir {self.repo_name}",
                                 f"cd {self.repo_name}",
                                 "git init",

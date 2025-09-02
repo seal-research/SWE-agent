@@ -87,8 +87,6 @@ class SWEEnv_Apptainer:
         for hook in hooks or []:
             self.add_hook(hook)
         
-        self.sandbox_path = None
-
     @classmethod
     def from_config(cls, config: EnvironmentConfig_Apptainer) -> Self:
         """Create an environment instance from a configuration object.
@@ -151,12 +149,6 @@ class SWEEnv_Apptainer:
         """
         self._copy_repo()
         self._reset_repository()
-        r = self.communicate(input='pwd', check="raise")
-        cwd = r.strip()
-        self.communicate(input='cd ..', check="raise")
-        r = self.communicate(input='pwd', check="raise")
-        self.sandbox_path = r.strip()
-        self.communicate(input=f'cd {cwd}', check="raise")
         self._chook.on_environment_startup()
 
     def _reset_repository(self) -> None:
@@ -166,7 +158,7 @@ class SWEEnv_Apptainer:
             # todo: Currently has swe-ft specific change: The original repo.copy isn't called, because the repo is already
             # present. However, reset --hard <BRANCH> also doesn't work. So modified it here to do a checkout instead.
             startup_commands = [
-                f"cd {self.deployment.sandbox_path}/{self.repo.repo_name}",
+                f"cd apptainer_sandbox/{self.repo.repo_name}",
                 "export ROOT=$(pwd -P)",
                 *self.repo.get_reset_commands(),
             ]
@@ -183,10 +175,10 @@ class SWEEnv_Apptainer:
         self.logger.info("Beginning environment shutdown...")
         asyncio.run(self.deployment.stop())
         self._chook.on_close()
-
-        if os.path.exists(self.deployment.sandbox_path):
-            shutil.rmtree(self.deployment.sandbox_path, ignore_errors=True)
-            self.logger.info(f"Removed Apptainer sandbox: {self.deployment.sandbox_path}")
+        sandbox_path = str(self.deployment._config.apptainer_output_dir / "apptainer_sandbox")
+        if os.path.exists(sandbox_path):
+            shutil.rmtree(sandbox_path, ignore_errors=True)
+            self.logger.info(f"Removed Apptainer sandbox: {sandbox_path}")
         if os.path.exists(self.deployment.sif_file):
             os.remove(self.deployment.sif_file)
             self.logger.info(f"Removed Apptainer base image file: {self.deployment.sif_file}")
@@ -201,15 +193,10 @@ class SWEEnv_Apptainer:
         """
         self._chook.on_start_deployment()
         asyncio.run(self.deployment.start())
-        
-        # Get the sandbox path from the deployment object
-        sandbox_path = self.deployment.sandbox_path
-        if not sandbox_path:
-            raise RuntimeError("Sandbox path not found in deployment. Has deployment.start() been called?")
 
         session_request = CreateBashSessionRequest(
             session="default",
-            sandbox_path=sandbox_path
+            apptainer_output_dir=str(self.deployment._config.apptainer_output_dir),
         )
         
         # Create the session. If it already exists, this will reset it.
