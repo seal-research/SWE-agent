@@ -179,9 +179,10 @@ class SWEEnv_Apptainer:
         if os.path.exists(sandbox_path):
             shutil.rmtree(sandbox_path, ignore_errors=True)
             self.logger.info(f"Removed Apptainer sandbox: {sandbox_path}")
-        if os.path.exists(self.deployment.sif_file):
-            os.remove(self.deployment.sif_file)
-            self.logger.info(f"Removed Apptainer base image file: {self.deployment.sif_file}")
+        sif_file_path = str(self.deployment._config.apptainer_output_dir / self.deployment.sif_file)
+        if os.path.exists(sif_file_path):
+            os.remove(sif_file_path)
+            self.logger.info(f"Removed Apptainer base image file: {sif_file_path}")
 
     # MARK: Helper functions #
 
