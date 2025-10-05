@@ -403,6 +403,8 @@ class FunctionCallingParser(AbstractParseFunction, BaseModel):
         if not isinstance(tool_call["function"]["arguments"], dict):
             try:
                 values = json.loads(tool_call["function"]["arguments"])
+                while not isinstance(values, dict):
+                    values = json.loads(values)
             except json.JSONDecodeError:
                 msg = "Tool call arguments are not valid JSON."
                 raise FunctionCallingFormatError(msg, "invalid_json")
