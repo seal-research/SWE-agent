@@ -1286,7 +1286,6 @@ class DefaultAgent(AbstractAgent):
         while not step_output.done:
             step_output = self.step()
             self.save_trajectory()
-            time.sleep(10)
         self._chook.on_run_done(trajectory=self.trajectory, info=self.info)
 
         self.logger.info("Trajectory saved to %s", self.traj_path)
